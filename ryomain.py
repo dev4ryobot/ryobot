@@ -9,6 +9,7 @@ load_dotenv(".ryoenv")
 RYOTOKEN = os.getenv("RYO_TOKEN")
 DEV_ID = 1322126091929915454  # Neo Discord ID
 GUILD_ID = 1424877893514952776 # Ryo Staff Server ID
+GUILD = discord.Object(id=GUILD_ID)
 
 if RYOTOKEN is None:
     raise ValueError("Token not found. Check your .env file.")
@@ -27,32 +28,46 @@ async def on_ready():
     print("Commands synced!")
     
 # /ping
-@bot.tree.command(name="ping", description="Check bot latency")
+@bot.tree.command(
+    name="ping",
+    description="Check bot latency",
+    guild=GUILD
+)
 async def ping(interaction: discord.Interaction):
     latency = round(bot.latency * 1000)
     await interaction.response.send_message(f"🏓 Pong! {latency}ms")
 
 # /sync (DEV ONLY)
 @bot.tree.command(name="sync", description="Sync commands (DEV ONLY)")
-async def sync(interaction: discord.Interaction):
+@app_commands.describe(mode="guild = instant | global = slow")
+async def sync(interaction: discord.Interaction, mode: str):
     if interaction.user.id != DEV_ID:
         return await interaction.response.send_message(
             "❌ Not allowed", ephemeral=True
         )
 
-    if interaction.guild is None:
-        return await interaction.response.send_message(
-            "❌ This command can only be used in a server.",
-            ephemeral=True
-        )
-
     await interaction.response.defer()
 
-    guild = discord.Object(id=interaction.guild.id)
-    synced = await bot.tree.sync(guild=guild)
+    try:
+        if mode.lower() == "global":
+            synced = await bot.tree.sync()
+            await interaction.followup.send(
+                f"🌍 Synced {len(synced)} commands globally (may take time)"
+            )
+        else:
+            if interaction.guild is None:
+                return await interaction.followup.send(
+                    "❌ Use this in a server for guild sync."
+                )
 
-    await interaction.followup.send(
-        f"⚡ Synced {len(synced)} commands to this server!"
-    )
+            guild = discord.Object(id=interaction.guild.id)
+            synced = await bot.tree.sync(guild=guild)
+
+            await interaction.followup.send(
+                f"⚡ Synced {len(synced)} commands to this server!"
+            )
+
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}")
 
 bot.run(RYOTOKEN)
