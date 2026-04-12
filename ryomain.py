@@ -20,7 +20,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # on_ready
 @bot.event
 async def on_ready():
-    print(f"Logged inn as {bot.user}")
+    print(f"Logged in as {bot.user}")
+    await bot.tree.sync()
 
     guild = discord.Object(id=GUILD_ID)
     await bot.tree.sync(guild=guild)
